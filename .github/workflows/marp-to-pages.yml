@@ -106,7 +106,9 @@ jobs:
           for file in dist/*.html; do
             if [ "$file" != "dist/index.html" ] && [ -f "$file" ]; then
               filename=$(basename "$file")
-              presentation_name=$(echo "$filename" | sed 's/-/ /g' | sed 's/.html//' | sed 's/\b\(.\)/\u\1/g')
+              presentation_name=$(echo "$filename" | sed 's/-/ /g' | sed 's/.html//')
+              # Capitalize first letter of each word
+              presentation_name=$(echo "$presentation_name" | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')
               echo "        <div class=\"presentation-item\">" >> dist/index.html
               echo "          <a href=\"$filename\">$presentation_name</a>" >> dist/index.html
               echo "        </div>" >> dist/index.html

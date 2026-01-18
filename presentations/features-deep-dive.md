@@ -70,15 +70,15 @@ Compatible with:
 
 ## Roadmap
 
-**Q1 2024**
+**Next Quarter**
 - AI/ML features
 - Enhanced analytics
 
-**Q2 2024**
+**6 Months**
 - Mobile apps
 - Offline mode
 
-**Q3 2024**
+**12 Months**
 - Advanced automation
 - Custom workflows
 
