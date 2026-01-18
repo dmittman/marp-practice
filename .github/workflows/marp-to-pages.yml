@@ -1,0 +1,141 @@
+name: Build and Deploy Marp Presentations
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'presentations/**'
+      - '.github/workflows/marp-to-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Marp CLI
+        run: npm install -g @marp-team/marp-cli
+
+      - name: Create output directory
+        run: mkdir -p dist
+
+      - name: Convert Marp presentations to HTML
+        run: |
+          for file in presentations/*.md; do
+            if [ -f "$file" ]; then
+              filename=$(basename "$file" .md)
+              echo "Converting $file to HTML..."
+              marp "$file" --html --allow-local-files -o "dist/${filename}.html"
+            fi
+          done
+
+      - name: Create index page
+        run: |
+          cat > dist/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Product Presentations</title>
+              <style>
+                  body {
+                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                      max-width: 800px;
+                      margin: 50px auto;
+                      padding: 20px;
+                      background: #f5f5f5;
+                  }
+                  h1 {
+                      color: #333;
+                      border-bottom: 3px solid #0066cc;
+                      padding-bottom: 10px;
+                  }
+                  .presentations {
+                      background: white;
+                      padding: 30px;
+                      border-radius: 8px;
+                      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                  }
+                  .presentation-item {
+                      margin: 20px 0;
+                      padding: 15px;
+                      border-left: 4px solid #0066cc;
+                      background: #f9f9f9;
+                  }
+                  .presentation-item a {
+                      color: #0066cc;
+                      text-decoration: none;
+                      font-size: 1.2em;
+                      font-weight: 500;
+                  }
+                  .presentation-item a:hover {
+                      text-decoration: underline;
+                  }
+                  .footer {
+                      margin-top: 40px;
+                      text-align: center;
+                      color: #666;
+                      font-size: 0.9em;
+                  }
+              </style>
+          </head>
+          <body>
+              <h1>📊 Product Presentations</h1>
+              <div class="presentations">
+                  <p>Welcome to our product presentation library. Click on any presentation below to view it.</p>
+          EOF
+          
+          for file in dist/*.html; do
+            if [ "$file" != "dist/index.html" ] && [ -f "$file" ]; then
+              filename=$(basename "$file")
+              presentation_name=$(echo "$filename" | sed 's/-/ /g' | sed 's/.html//')
+              # Capitalize first letter of each word
+              presentation_name=$(echo "$presentation_name" | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')
+              echo "        <div class=\"presentation-item\">" >> dist/index.html
+              echo "          <a href=\"$filename\">$presentation_name</a>" >> dist/index.html
+              echo "        </div>" >> dist/index.html
+            fi
+          done
+          
+          cat >> dist/index.html << 'EOF'
+              </div>
+              <div class="footer">
+                  <p>Built with <a href="https://marp.app/">Marp</a> | Powered by GitHub Pages</p>
+              </div>
+          </body>
+          </html>
+          EOF
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
